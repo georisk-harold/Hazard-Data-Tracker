@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GeoRiskPH Update Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    margin: 0;
+    padding-bottom: 30px;
+  }
+  h2 {
+    text-align: center;
+    margin: 20px 0;
+  }
+  #map {
+    height: 400px;
+    width: 90%;
+    margin: 0 auto;
+    border-radius: 10px;
+  }
+  table {
+    width: 95%;
+    margin: 20px auto;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    text-align: center;
+    font-size: 14px;
+  }
+  th {
+    background: #0078d7;
+    color: white;
+  }
+  tr.highlight {
+    background: #f8d7da;
+  }
+  select {
+    padding: 3px 6px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<h2>GeoRiskPH Update Dashboard (Live via Google Sheets)</h2>
+
+<div id="map"></div>
+
+<table id="updateTable">
+  <thead>
+    <tr>
+      <th>Province</th>
+      <th>AF</th>
+      <th>LIQ</th>
+      <th>EIL</th>
+      <th>TSU</th>
+      <th>GSH</th>
+      <th>Latest Date Updated (GeoDB)</th>
+      <th>For Updating</th>
+      <th>Latest Date Updated (Prod)</th>
+      <th>Updated</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const SHEET_API = "YOUR_WEB_APP_URL_HERE"; // <--- Replace with your Apps Script Web App URL
+
+// === Load data from Google Sheet ===
+async function loadData() {
+  const res = await fetch(SHEET_API);
+  const data = await res.json();
+  const tbody = document.querySelector("#updateTable tbody");
+  tbody.innerHTML = "";
+
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+    if (row["For Updating"] === "Yes") tr.classList.add("highlight");
+
+    tr.innerHTML = `
+      <td>${row["Province"]}</td>
+      <td>${row["AF"]}</td>
+      <td>${row["LIQ"]}</td>
+      <td>${row["EIL"]}</td>
+      <td>${row["TSU"]}</td>
+      <td>${row["GSH"]}</td>
+      <td>${row["Latest Date Updated (GeoDB)"]}</td>
+      <td>
+        <select class="forUpdating">
+          <option value="No" ${row["For Updating"] === "No" ? "selected" : ""}>No</option>
+          <option value="Yes" ${row["For Updating"] === "Yes" ? "selected" : ""}>Yes</option>
+        </select>
+      </td>
+      <td>${row["Latest Date Updated (Prod)"]}</td>
+      <td>
+        <select class="updated">
+          <option value="No" ${row["Updated"] === "No" ? "selected" : ""}>No</option>
+          <option value="Yes" ${row["Updated"] === "Yes" ? "selected" : ""}>Yes</option>
+        </select>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  addListeners();
+}
+
+// === Handle dropdown updates ===
+function addListeners() {
+  document.querySelectorAll(".forUpdating, .updated").forEach(select => {
+    select.addEventListener("change", async () => {
+      const row = select.closest("tr");
+      const province = row.cells[0].innerText;
+      const forUpdating = row.querySelector(".forUpdating").value;
+      const updated = row.querySelector(".updated").value;
+
+      row.classList.toggle("highlight", forUpdating === "Yes");
+
+      await fetch(SHEET_API, {
+        method: "POST",
+        body: JSON.stringify({
+          Province: province,
+          "For Updating": forUpdating,
+          "Updated": updated
+        }),
+        headers: { "Content-Type": "application/json" }
+      });
+
+      // refresh table to show updated timestamp
+      loadData();
+    });
+  });
+}
+
+// === Map (optional visual reference) ===
+const map = L.map('map').setView([12.8797, 121.7740], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+}).addTo(map);
+
+// Load data on start
+loadData();
+</script>
+</body>
+</html>
