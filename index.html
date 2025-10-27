@@ -120,14 +120,10 @@
 
     // === Fetch Sheet Data ===
     async function loadData() {
-      try {
-        const res = await fetch(sheetURL);
-        const data = await res.json();
-        populateTable(data);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      }
-    }
+  const response = await fetch(`${sheetURL}?t=${new Date().getTime()}`, { cache: "no-store" });
+  const data = await response.json();
+  renderTable(data);
+}
 
     // === Populate HTML Table ===
     function populateTable(data) {
