@@ -1,2 +1,2 @@
 # Hazard-Data-Tracker
-Hazard data tracker for PHIVOLCS
+This project will help track hazard data efficiently
