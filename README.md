@@ -1,2 +1,2 @@
 # Hazard-Data-Tracker
-This project will help track hazard data efficiently
+This line was added in the update-readme branch
