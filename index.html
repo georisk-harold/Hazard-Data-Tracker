@@ -1,153 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>GeoRiskPH Update Dashboard</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f5f7fa;
-    margin: 0;
-    padding-bottom: 30px;
-  }
-  h2 {
-    text-align: center;
-    margin: 20px 0;
-  }
-  #map {
-    height: 400px;
-    width: 90%;
-    margin: 0 auto;
-    border-radius: 10px;
-  }
-  table {
-    width: 95%;
-    margin: 20px auto;
-    border-collapse: collapse;
-    background: white;
-    box-shadow: 0 0 5px rgba(0,0,0,0.1);
-  }
-  th, td {
-    border: 1px solid #ccc;
-    padding: 6px 10px;
-    text-align: center;
-    font-size: 14px;
-  }
-  th {
-    background: #0078d7;
-    color: white;
-  }
-  tr.highlight {
-    background: #f8d7da;
-  }
-  select {
-    padding: 3px 6px;
-    border-radius: 4px;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoRiskPH Update Dashboard</title>
+
+  <!-- Leaflet Map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f4f6f8;
+    }
+
+    header {
+      background-color: #003366;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+
+    #map {
+      height: 350px;
+      width: 100%;
+    }
+
+    table {
+      width: 95%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #003366;
+      color: white;
+    }
+
+    tr.highlight {
+      background-color: #ffcccc !important;
+    }
+
+    button {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .yes {
+      background-color: #28a745;
+    }
+
+    .no {
+      background-color: #dc3545;
+    }
+
+    footer {
+      text-align: center;
+      padding: 10px;
+      color: #666;
+      font-size: 12px;
+    }
+  </style>
 </head>
+
 <body>
-<h2>GeoRiskPH Update Dashboard (Live via Google Sheets)</h2>
+  <header>
+    <h2>GeoRiskPH Update Dashboard</h2>
+  </header>
 
-<div id="map"></div>
+  <div id="map"></div>
 
-<table id="updateTable">
-  <thead>
-    <tr>
-      <th>Province</th>
-      <th>AF</th>
-      <th>LIQ</th>
-      <th>EIL</th>
-      <th>TSU</th>
-      <th>GSH</th>
-      <th>Latest Date Updated (GeoDB)</th>
-      <th>For Updating</th>
-      <th>Latest Date Updated (Prod)</th>
-      <th>Updated</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+  <table id="data-table">
+    <thead>
+      <tr>
+        <th>Province</th>
+        <th>AF</th>
+        <th>LIQ</th>
+        <th>EIL</th>
+        <th>TSU</th>
+        <th>GSH</th>
+        <th>Latest Date Updated (GeoDB)</th>
+        <th>For Updating</th>
+        <th>Latest Date Updated (Prod)</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-<script>
-const SHEET_API = "https://script.google.com/macros/s/AKfycby3atiEnG_r9rQdAcv9BdMSPVMQX2_C80J_g3T1AwMr59qwWoz7YOy9LJv_TIBHcPUf/exec"; // <--- Replace with your Apps Script Web App URL
+  <footer>
+    © 2025 GeoRiskPH | Demo Dashboard (GitHub Pages)
+  </footer>
 
-// === Load data from Google Sheet ===
-async function loadData() {
-  const res = await fetch(SHEET_API);
-  const data = await res.json();
-  const tbody = document.querySelector("#updateTable tbody");
-  tbody.innerHTML = "";
+  <script>
+    // === CONFIG ===
+    const sheetURL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL"; // <-- Replace this!
 
-  data.forEach(row => {
-    const tr = document.createElement("tr");
-    if (row["For Updating"] === "Yes") tr.classList.add("highlight");
+    // === Initialize Map ===
+    const map = L.map("map").setView([12.8797, 121.7740], 5); // Philippines
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
 
-    tr.innerHTML = `
-      <td>${row["Province"]}</td>
-      <td>${row["AF"]}</td>
-      <td>${row["LIQ"]}</td>
-      <td>${row["EIL"]}</td>
-      <td>${row["TSU"]}</td>
-      <td>${row["GSH"]}</td>
-      <td>${row["Latest Date Updated (GeoDB)"]}</td>
-      <td>
-        <select class="forUpdating">
-          <option value="No" ${row["For Updating"] === "No" ? "selected" : ""}>No</option>
-          <option value="Yes" ${row["For Updating"] === "Yes" ? "selected" : ""}>Yes</option>
-        </select>
-      </td>
-      <td>${row["Latest Date Updated (Prod)"]}</td>
-      <td>
-        <select class="updated">
-          <option value="No" ${row["Updated"] === "No" ? "selected" : ""}>No</option>
-          <option value="Yes" ${row["Updated"] === "Yes" ? "selected" : ""}>Yes</option>
-        </select>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+    // === Fetch Sheet Data ===
+    async function loadData() {
+      try {
+        const res = await fetch(sheetURL);
+        const data = await res.json();
+        populateTable(data);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    }
 
-  addListeners();
-}
+    // === Populate HTML Table ===
+    function populateTable(data) {
+      const tbody = document.querySelector("#data-table tbody");
+      tbody.innerHTML = "";
 
-// === Handle dropdown updates ===
-function addListeners() {
-  document.querySelectorAll(".forUpdating, .updated").forEach(select => {
-    select.addEventListener("change", async () => {
-      const row = select.closest("tr");
-      const province = row.cells[0].innerText;
-      const forUpdating = row.querySelector(".forUpdating").value;
-      const updated = row.querySelector(".updated").value;
+      data.forEach(row => {
+        const tr = document.createElement("tr");
 
-      row.classList.toggle("highlight", forUpdating === "Yes");
+        // Highlight if For Updating = Yes
+        if (row["For Updating"] === "Yes") tr.classList.add("highlight");
 
-      await fetch(SHEET_API, {
-        method: "POST",
-        body: JSON.stringify({
-          Province: province,
-          "For Updating": forUpdating,
-          "Updated": updated
-        }),
-        headers: { "Content-Type": "application/json" }
+        tr.innerHTML = `
+          <td>${row["Province"] || ""}</td>
+          <td>${row["AF"] || ""}</td>
+          <td>${row["LIQ"] || ""}</td>
+          <td>${row["EIL"] || ""}</td>
+          <td>${row["TSU"] || ""}</td>
+          <td>${row["GSH"] || ""}</td>
+          <td>${row["Latest Date Updated (GeoDB)"] || ""}</td>
+          <td>
+            <button class="${row["For Updating"] === "Yes" ? "yes" : "no"}"
+              onclick="toggleStatus('${row["Province"]}', 'For Updating', '${row["For Updating"]}')">
+              ${row["For Updating"] || "No"}
+            </button>
+          </td>
+          <td>${row["Latest Date Updated (Prod)"] || ""}</td>
+          <td>
+            <button class="${row["Updated"] === "Yes" ? "yes" : "no"}"
+              onclick="toggleStatus('${row["Province"]}', 'Updated', '${row["Updated"]}')">
+              ${row["Updated"] || "No"}
+            </button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
       });
+    }
 
-      // refresh table to show updated timestamp
-      loadData();
-    });
-  });
-}
+    // === Toggle For Updating / Updated ===
+    async function toggleStatus(province, field, currentValue) {
+      const newValue = currentValue === "Yes" ? "No" : "Yes";
 
-// === Map (optional visual reference) ===
-const map = L.map('map').setView([12.8797, 121.7740], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18,
-}).addTo(map);
+      try {
+        await fetch(sheetURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Province: province,
+            [field]: newValue,
+          }),
+        });
+        loadData(); // refresh after update
+      } catch (err) {
+        console.error("Error updating data:", err);
+      }
+    }
 
-// Load data on start
-loadData();
-</script>
+    // === Load Data on Page Load ===
+    loadData();
+
+    // Optional: auto-refresh every 2 minutes
+    setInterval(loadData, 120000);
+  </script>
 </body>
 </html>
